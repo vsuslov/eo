@@ -1,5 +1,11 @@
 <img src="http://cf.jare.io/?u=http%3A%2F%2Fwww.yegor256.com%2Fimages%2Fbooks%2Felegant-objects%2Fcactus.svg" height="100px" />
 
+[![DevOps By Rultor.com](http://www.rultor.com/b/yegor256/eo)](http://www.rultor.com/p/yegor256/eo)
+
+[![Build Status](https://travis-ci.org/yegor256/eo.svg?branch=master)](https://travis-ci.org/yegor256/eo)
+[![PDD status](http://www.0pdd.com/svg?name=yegor256/eo)](http://www.0pdd.com/p?name=yegor256/eo)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/yegor256/takes/blob/master/LICENSE.txt)
+
 **EO** (stands for [Elegant Objects](http://www.yegor256.com/elegant-objects.html) or
 ISO 639-1 code of [Esperanto](https://en.wikipedia.org/wiki/Esperanto))
 is an object-oriented programming language. It's still a prototype.
@@ -12,21 +18,22 @@ Our Twitter tag is [#eolang](https://twitter.com/search?q=%23eolang).
 
 These things we **don't tolerate**:
 
-  * static/class methods or attributes
-  * classes (only types and objects)
-  * implementation inheritance
-  * mutability
-  * NULL
+  * static/class methods or attributes ([why?](http://www.yegor256.com/2014/05/05/oop-alternative-to-utility-classes.html))
+  * classes ([why?](http://www.yegor256.com/2016/09/20/oop-without-classes.html))
+  * implementation inheritance ([why?](http://www.yegor256.com/2016/09/13/inheritance-is-procedural.html))
+  * mutability ([why?](http://www.yegor256.com/2014/06/09/objects-should-be-immutable.html))
+  * NULL ([why?](http://www.yegor256.com/2014/05/13/why-null-is-bad.html))
   * global variables/procedures
   * reflection
   * constants
-  * type casting
+  * type casting ([why?](http://www.yegor256.com/2015/04/02/class-casting-is-anti-pattern.html))
   * scalar types
   * garbage collection ([huh?](https://github.com/yegor256/eo/issues/4))
-  * annotations
-  * unchecked exceptions
+  * annotations ([why?](http://www.yegor256.com/2016/04/12/java-annotations-are-evil.html))
+  * unchecked exceptions ([why?](http://www.yegor256.com/2015/07/28/checked-vs-unchecked-exceptions.html))
   * operators
   * flow control statements (`for`, `while`, `if`, etc)
+  * DSL and [syntactic sugar](https://en.wikipedia.org/wiki/Syntactic_sugar) ([why?](https://github.com/yegor256/eo/issues/51))
 
 These things we **want** to build in:
 
@@ -35,8 +42,8 @@ These things we **want** to build in:
   * build automation
   * aspects (AOP)
   * logging
-  * unit testing
-  * versioning
+  * TDD ([discuss](https://github.com/yegor256/eo/issues/34))
+  * versioning ([discuss](https://github.com/yegor256/eo/issues/22))
   * concurrency
   * object metadata
   * persistence
@@ -51,6 +58,10 @@ These things we are **not sure** about (please, help us):
 We want EO to be compilable to Java. We want to stay as close to Java and JVM
 as possible, mostly in order to re-use the eco-system and libraries
 already available.
+
+We also want to have an ability to compile it to any other language, like
+Python, C/C++, Ruby, C#, etc. In other words, EO must be platform
+independent.
 
 ## Quick Start
 
@@ -92,7 +103,7 @@ symbol at the end, for example:
 
 ```
 type Book:
-  String asText()
+  Text asText()
 type Car:
   Money cost()
   Bytes picture()
@@ -121,13 +132,17 @@ all methods required by its types must be implemented, for example
 (`alphabet` is the name of the object):
 
 ```
-object alphabet("978-1-51916-691-3", "The Alphabet") as Book:
-  String @isbn
-  String @title
-  alphabet(ISBN i, String t):
+object alphabet as Book:
+  Text @isbn
+  Text @title
+  ctor()
+    alphabet:
+      "978-1-51916-691-3",
+      "The Alphabet"
+  ctor(String i, String t):
     @isbn = i
     @title = t
-  String asText():
+  Text asText():
     sprintf:
       "ISBN is %s, title is '%s'",
       @isbn,
@@ -154,10 +169,10 @@ Object creating and copying may be combined in any possible way, for example:
 
 ```
 Ticket ticket(Person passenger):
-  object x(passenger) as Ticket:
+  object as Ticket:
     Person @p
-    x(Passenger p)
-    String name():
+    ctor(Passenger p)
+    Text name():
       concat:
         "506-",
         @p.name()
@@ -165,7 +180,7 @@ Ticket ticket(Person passenger):
       if:
         @p.vip(),
         money("$50"),
-        object m() as Money
+        object () as Money
           Int value():
             25
 ```
@@ -182,7 +197,7 @@ first line of object declaration:
 ```
 object zero(0, "USD") as Money:
   Int @amount
-  String @currency
+  Text @currency
 ```
 
 All attributes are private; there is no such thing as public or protected
@@ -198,7 +213,8 @@ A constructor is a ... TBD
 
 A destructor is a ... TBD
 
-An object must have a primary constructor and may have
+An object must have a primary constructor (which must have at least
+one parameter, i.e. the object must encapsulate something) and may have
 any number of secondary constructors and one destructor.
 A primary constructor is the one that initializes object
 attributes and can't have a body, for example:
@@ -206,13 +222,13 @@ attributes and can't have a body, for example:
 ```
 object zero() as Money, Int:
   Int @amount
-  String @currency
-  zero(): # secondary constructor
+  Text @currency
+  ctor(): # secondary constructor
     zero: 0
-  zero(Int a): # secondary constructor
+  ctor(Int a): # secondary constructor
     zero: a, "USD"
-  zero(Int amount, String currency) # primary constructor
-  ~zero(): # destructor
+  ctor(Int amount, Text currency) # primary constructor
+  dtor(): # destructor
     printed: "I'm dying..."
 ```
 
@@ -230,6 +246,9 @@ Constructors must be listed after attributes. The primary constructor
 must be the last one. The destructor, if it is present, goes
 right after the primary constructor.
 
+For constructors the `ctor` keyword is used and for destructors,
+the keyword is `dtor`.
+
 ### Methods
 
 A method is a behavior exposing instrument of an object.
@@ -240,7 +259,7 @@ Method body must create and return exactly one object, using a single
 ```
 Int max(Int a, Int b):
   if:
-    lessThan:
+    firstIsLess:
       a,
       b
     b,
@@ -262,8 +281,8 @@ it has to be replaced with `?` mark, for example:
 ```
 Int power(? x, Int p):
   if:
-    equals: p, 0
-    1
+    equals: p, 0,
+    1,
     mul:
       x,
       power: x, minus: p, 1
@@ -273,7 +292,7 @@ This code will lead to compile-time error if `x` doesn't implement `Int`.
 
 The method name must match `[a-z][a-z0-9]{2,15}`.
 
-A single empty line is allowed after the method body.
+A single empty line is allowed after the method body, nowhere else.
 
 ### Exceptions
 
@@ -308,8 +327,8 @@ Some objects are popular as well:
 if
 equals as Boolean
 not as Boolean
-lessThan as Boolean
-greaterThan as Boolean
+firstIsLess as Boolean
+firstIsGreater as Boolean
 plus
 minus
 mul
@@ -323,12 +342,12 @@ A Fibonacci number:
 ```
 object fibonacci(1) as Int:
   Int @n
-  fibonacci():
+  ctor():
     fibonacci: 1
-  fibonacci(Int n)
+  ctor(Int n)
   Int int():
     if:
-      lessThan: @n, 2
+      firstIsLess: @n, 2
       1,
       plus:
         @n
@@ -336,4 +355,27 @@ object fibonacci(1) as Int:
           minus: @n, 1
 ```
 
-Here, `if`, `lessThan`, `plus`, and `minus` are objects being copied.
+Here, `if`, `firstIsLess`, `plus`, and `minus` are objects being copied.
+
+# How to contribute
+
+Fork repository, make changes, send us a pull request. We will review your changes and apply them to the master branch shortly, provided they don't violate our quality standards. To avoid frustration, before sending us your pull request please run full Maven build:
+
+`$ mvn clean install -Pqulice`
+
+# Troubleshooting
+## Intellij IDEA
+If after clean import from Maven, IDEA doesn't compile the project
+and shows errors about ProgramLexer is undefined:
+- Open Maven Projects window
+- Select eo-compiler
+- Right button
+- Generate Sources and Update Folders
+
+# License
+
+* Copyright (c) 2016 eolang.org [contributors](https://github.com/yegor256/eo/graphs/contributors)
+
+This EO documentation, examples and the [eo-compiler](eo-compiler)
+is distributed under [The MIT License](http://www.opensource.org/licenses/MIT).
+See [LICENSE](LICENSE) for details.
